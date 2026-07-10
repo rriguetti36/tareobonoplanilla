@@ -1,0 +1,2 @@
+const S=require('../services/ContractTemplateService')
+module.exports={getAll:async(req,res,next)=>{try{res.json(await S.getAll(req.user.companyId,req.query.includeInactive==='true'))}catch(e){next(e)}},create:async(req,res,next)=>{try{res.status(201).json(await S.create(req.user.companyId,req.body))}catch(e){next(e)}},update:async(req,res,next)=>{try{res.json(await S.update(Number(req.params.id),req.user.companyId,req.body))}catch(e){next(e)}}}

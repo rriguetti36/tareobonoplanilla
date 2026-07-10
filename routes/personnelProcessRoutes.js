@@ -1,0 +1,20 @@
+const express = require('express')
+const C = require('../controllers/PersonnelProcessController')
+const auth = require('../middleware/authMiddleware')
+const allow = require('../middleware/roleMiddleware')
+const contractPdfUpload = require('../middleware/contractPdfUpload')
+const router = express.Router()
+
+router.use(auth)
+router.get('/:type', allow('admin', 'rrhh', 'operaciones', 'supervisor', 'gerencia', 'contabilidad'), C.getAll)
+router.post('/:type', allow('admin', 'rrhh', 'supervisor'), C.create)
+router.put('/:type/:id', allow('admin', 'rrhh', 'supervisor'), C.update)
+router.patch('/:type/:id/decision', allow('admin'), C.decide)
+router.get('/contract/my-documents', allow('colaborador'), C.myContracts)
+router.post('/contract/:id/generate-pdf', allow('admin','rrhh'), C.generateContract)
+router.get('/contract/:id/pdf', allow('admin','rrhh','gerencia','contabilidad','colaborador'), C.downloadContract)
+router.put('/contract/:id/signed-pdf', allow('admin','rrhh','colaborador'), contractPdfUpload.single('contract'), C.uploadSignedContract)
+router.get('/contract/:id/signed-pdf', allow('admin','rrhh','gerencia','contabilidad','colaborador'), C.downloadSignedContract)
+router.patch('/contract/:id/confirm-signed', allow('admin','rrhh'), C.confirmSignedContract)
+
+module.exports = router

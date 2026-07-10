@@ -1,0 +1,9 @@
+const { poolPromise, sql } = require('../config/db');
+class ShiftModel {
+  static async getAll(companyId) { const pool=await poolPromise; const r=await pool.request().input('companyId',sql.Int,companyId).query(`SELECT id,code,name,CONVERT(varchar(5),startTime,108) startTime,CONVERT(varchar(5),endTime,108) endTime,estado FROM dbo.Shifts WHERE companyId=@companyId ORDER BY startTime`); return r.recordset; }
+  static async getById(id,companyId) { const pool=await poolPromise; const r=await pool.request().input('id',sql.Int,id).input('companyId',sql.Int,companyId).query(`SELECT id,code,name,CONVERT(varchar(5),startTime,108) startTime,CONVERT(varchar(5),endTime,108) endTime,estado FROM dbo.Shifts WHERE id=@id AND companyId=@companyId`); return r.recordset[0]; }
+  static bind(request,data){return request.input('code',sql.NVarChar(30),data.code).input('name',sql.NVarChar(100),data.name).input('startTime',sql.VarChar(5),data.startTime).input('endTime',sql.VarChar(5),data.endTime).input('estado',sql.Bit,data.estado??1)}
+  static async create(companyId,data){const pool=await poolPromise;const req=this.bind(pool.request().input('companyId',sql.Int,companyId),data);const r=await req.query(`INSERT dbo.Shifts(companyId,code,name,startTime,endTime,estado) OUTPUT INSERTED.id VALUES(@companyId,@code,@name,CAST(@startTime AS time),CAST(@endTime AS time),@estado)`);return this.getById(r.recordset[0].id,companyId)}
+  static async update(id,companyId,data){const pool=await poolPromise;const req=this.bind(pool.request().input('id',sql.Int,id).input('companyId',sql.Int,companyId),data);await req.query(`UPDATE dbo.Shifts SET code=@code,name=@name,startTime=CAST(@startTime AS time),endTime=CAST(@endTime AS time),estado=@estado,updatedAt=SYSUTCDATETIME() WHERE id=@id AND companyId=@companyId`);return this.getById(id,companyId)}
+}
+module.exports=ShiftModel;

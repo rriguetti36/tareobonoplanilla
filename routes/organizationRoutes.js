@@ -1,0 +1,15 @@
+const express = require('express');
+const Controller = require('../controllers/OrganizationController');
+const auth = require('../middleware/authMiddleware');
+const allow = require('../middleware/roleMiddleware');
+const router = express.Router();
+router.use(auth);
+const viewers = allow('admin','rrhh','operaciones','supervisor','gerencia');
+const managers = allow('admin','rrhh','operaciones');
+router.get('/sites', viewers, Controller.sites.getAll);
+router.post('/sites', managers, Controller.sites.create);
+router.put('/sites/:id', managers, Controller.sites.update);
+router.get('/clients', viewers, Controller.clients.getAll);
+router.post('/clients', managers, Controller.clients.create);
+router.put('/clients/:id', managers, Controller.clients.update);
+module.exports = router;

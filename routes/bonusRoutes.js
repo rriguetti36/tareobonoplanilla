@@ -1,0 +1,18 @@
+const e=require('express'),C=require('../controllers/BonusController'),auth=require('../middleware/authMiddleware'),allow=require('../middleware/roleMiddleware'),r=e.Router();
+r.use(auth);
+r.get('/types',allow('admin','rrhh','operaciones','gerencia'),C.types);
+r.get('/periods',allow('admin','rrhh','operaciones','gerencia'),C.periods);
+r.get('/settings',allow('admin','rrhh','operaciones','gerencia'),C.settings);
+r.put('/settings',allow('admin','rrhh'),C.updateSettings);
+r.post('/periods',allow('admin','rrhh'),C.createPeriod);
+r.patch('/periods/:id/close',allow('admin','rrhh'),C.closePeriod);
+r.get('/rules',allow('admin','rrhh','operaciones','gerencia'),C.rules);
+r.post('/rules',allow('admin','rrhh'),C.createRule);
+r.put('/rules/:id',allow('admin','rrhh'),C.updateRule);
+r.get('/campaigns',allow('admin','rrhh','operaciones','gerencia'),C.campaigns);
+r.post('/campaigns',allow('admin','rrhh','operaciones'),C.createCampaign);
+r.get('/campaigns/:id',allow('admin','rrhh','operaciones','gerencia'),C.detail);
+r.post('/campaigns/:id/calculate',allow('admin','rrhh','operaciones'),C.calculate);
+r.patch('/campaigns/:id/approve',allow('gerencia'),C.approve);
+r.delete('/campaigns/:id',allow('admin','rrhh'),C.remove);
+module.exports=r;

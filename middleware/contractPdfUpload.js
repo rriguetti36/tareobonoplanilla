@@ -1,0 +1,3 @@
+const fs=require('fs'),path=require('path'),crypto=require('crypto'),multer=require('multer')
+const storage=multer.diskStorage({destination:(req,file,cb)=>{const dir=path.join(process.cwd(),'uploads','contracts',String(req.user.companyId),'signed');fs.mkdirSync(dir,{recursive:true});cb(null,dir)},filename:(req,file,cb)=>cb(null,`${crypto.randomUUID()}.pdf`)})
+module.exports=multer({storage,limits:{fileSize:10*1024*1024},fileFilter:(req,file,cb)=>{if(file.mimetype!=='application/pdf')return cb(Object.assign(new Error('El contrato firmado debe ser un archivo PDF'),{status:400}));cb(null,true)}})

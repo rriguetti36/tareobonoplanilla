@@ -1,0 +1,8 @@
+const HolidayModel=require('../models/HolidayModel');
+class HolidayService{
+ static getPolicy(companyId){return HolidayModel.getPolicy(companyId)}
+ static updatePolicy(data,companyId){const surcharge=Number(data.surchargePercent);if(!Number.isFinite(surcharge)||surcharge<0){const e=new Error('La sobretasa no es valida');e.status=400;throw e}const asBoolean=value=>value===true||value===1||value==='true';return HolidayModel.updatePolicy(companyId,{surchargePercent:surcharge,allowSubstituteRest:asBoolean(data.allowSubstituteRest),useShiftStartDate:asBoolean(data.useShiftStartDate)})}
+ static getAll(companyId,year){const parsed=Number(year)||new Date().getFullYear();if(parsed<2000||parsed>2100){const e=new Error('El año no es valido');e.status=400;throw e}return HolidayModel.getAll(companyId,parsed)}
+ static async save(id,data,companyId){if(!data.holidayDate||!data.name?.trim()){const e=new Error('Fecha y nombre son obligatorios');e.status=400;throw e}if(!['holiday','non_working_day'].includes(data.dayType)||!['national','regional','company'].includes(data.scope)){const e=new Error('Tipo o alcance no valido');e.status=400;throw e}if(id&&!await HolidayModel.getById(id,companyId)){const e=new Error('Fecha no encontrada');e.status=404;throw e}const normalized={...data,name:data.name.trim(),isPaid:data.isPaid!==false,surchargePercent:data.surchargePercent===''?null:data.surchargePercent,allowSubstituteRest:data.allowSubstituteRest===''?null:data.allowSubstituteRest};return id?HolidayModel.update(id,companyId,normalized):HolidayModel.create(companyId,normalized)}
+}
+module.exports=HolidayService;

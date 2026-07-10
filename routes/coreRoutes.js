@@ -1,0 +1,37 @@
+const express = require('express');
+const RoleController = require('../controllers/RoleController');
+const CatalogController = require('../controllers/CatalogController');
+const authMiddleware = require('../middleware/authMiddleware');
+const adminMiddleware = require('../middleware/adminMiddleware');
+const roleMiddleware = require('../middleware/roleMiddleware');
+const ToleranceRuleController = require('../controllers/ToleranceRuleController');
+const ContractTemplateController = require('../controllers/ContractTemplateController');
+
+const router = express.Router();
+router.use(authMiddleware);
+router.get('/roles', RoleController.getRoles);
+router.post('/roles', adminMiddleware, RoleController.createRole);
+router.put('/roles/:code', adminMiddleware, RoleController.updateRole);
+router.get('/positions', CatalogController.positions.getAll);
+router.post('/positions', adminMiddleware, CatalogController.positions.create);
+router.put('/positions/:code', adminMiddleware, CatalogController.positions.update);
+router.get('/employment-types', CatalogController.employmentTypes.getAll);
+router.post('/employment-types', adminMiddleware, CatalogController.employmentTypes.create);
+router.put('/employment-types/:code', adminMiddleware, CatalogController.employmentTypes.update);
+router.get('/areas', CatalogController.areas.getAll);
+router.post('/areas', roleMiddleware('admin', 'rrhh', 'operaciones'), CatalogController.areas.create);
+router.put('/areas/:code', roleMiddleware('admin', 'rrhh', 'operaciones'), CatalogController.areas.update);
+router.get('/attendance-statuses', CatalogController.attendanceStatuses.getAll);
+router.post('/attendance-statuses', adminMiddleware, CatalogController.attendanceStatuses.create);
+router.put('/attendance-statuses/:code', adminMiddleware, CatalogController.attendanceStatuses.update);
+router.get('/incident-types', CatalogController.incidentTypes.getAll);
+router.post('/incident-types', adminMiddleware, CatalogController.incidentTypes.create);
+router.put('/incident-types/:code', adminMiddleware, CatalogController.incidentTypes.update);
+router.get('/tolerance-rules', ToleranceRuleController.getAll);
+router.post('/tolerance-rules', adminMiddleware, ToleranceRuleController.create);
+router.put('/tolerance-rules/:code', adminMiddleware, ToleranceRuleController.update);
+router.get('/contract-templates', ContractTemplateController.getAll);
+router.post('/contract-templates', adminMiddleware, ContractTemplateController.create);
+router.put('/contract-templates/:id', adminMiddleware, ContractTemplateController.update);
+
+module.exports = router;
