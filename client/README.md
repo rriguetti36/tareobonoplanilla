@@ -8,8 +8,16 @@ npm install
 npm run dev
 ```
 
-By default the client uses `http://localhost:3000/api` as API base. To change, create a `.env` at `client/.env` with:
+The API base URL is configured with Vite environment files.
+
+Development uses:
 
 ```
-VITE_API_BASE=http://localhost:3000/api
+VITE_API_BASE=http://localhost:3001/api
+```
+
+Production uses:
+
+```
+VITE_API_BASE=/api
 ```
