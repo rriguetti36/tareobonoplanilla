@@ -1,2 +1,16 @@
-const S=require('../services/AttendanceService'),ip=req=>req.ip||req.socket?.remoteAddress
-module.exports={list:async(req,res,next)=>{try{res.json(await S.list(req.user.companyId))}catch(e){next(e)}},detail:async(req,res,next)=>{try{res.json(await S.detail(Number(req.params.id),req.user.companyId))}catch(e){next(e)}},start:async(req,res,next)=>{try{res.status(201).json(await S.start(req.body,req.user.companyId,req.user,ip(req)))}catch(e){next(e)}},qr:async(req,res,next)=>{try{res.json(await S.generateQr(Number(req.params.id),req.body.markingType,req.user.companyId,req.user,ip(req)))}catch(e){next(e)}},scan:async(req,res,next)=>{try{res.status(201).json(await S.scan(req.body,req.user.companyId,req.user,ip(req)))}catch(e){next(e)}},manual:async(req,res,next)=>{try{res.status(201).json(await S.manual(Number(req.params.id),req.body,req.user.companyId,req.user,ip(req)))}catch(e){next(e)}},validate:async(req,res,next)=>{try{res.json(await S.validate(Number(req.params.id),Number(req.params.collaboratorId),req.body,req.user.companyId,req.user,ip(req)))}catch(e){next(e)}},close:async(req,res,next)=>{try{res.json(await S.close(Number(req.params.id),req.user.companyId,req.user,ip(req)))}catch(e){next(e)}},review:async(req,res,next)=>{try{res.json(await S.review(Number(req.params.id),req.body,req.user.companyId,req.user,ip(req)))}catch(e){next(e)}}}
+const S = require('../services/AttendanceService')
+const ip = req => req.ip || req.socket?.remoteAddress
+
+module.exports = {
+  list: async (req, res, next) => { try { res.json(await S.list(req.user.companyId, req.user)) } catch (e) { next(e) } },
+  generalReport: async (req, res, next) => { try { res.json(await S.generalReport(req.user.companyId, req.query, req.user)) } catch (e) { next(e) } },
+  detail: async (req, res, next) => { try { res.json(await S.detail(Number(req.params.id), req.user.companyId, req.user)) } catch (e) { next(e) } },
+  start: async (req, res, next) => { try { res.status(201).json(await S.start(req.body, req.user.companyId, req.user, ip(req))) } catch (e) { next(e) } },
+  qr: async (req, res, next) => { try { res.json(await S.generateQr(Number(req.params.id), req.body.markingType, req.user.companyId, req.user, ip(req))) } catch (e) { next(e) } },
+  scan: async (req, res, next) => { try { res.status(201).json(await S.scan(req.body, req.user.companyId, req.user, ip(req))) } catch (e) { next(e) } },
+  scanCode: async (req, res, next) => { try { res.status(201).json(await S.scanCode(Number(req.params.id), req.body, req.user.companyId, req.user, ip(req))) } catch (e) { next(e) } },
+  manual: async (req, res, next) => { try { res.status(201).json(await S.manual(Number(req.params.id), req.body, req.user.companyId, req.user, ip(req))) } catch (e) { next(e) } },
+  validate: async (req, res, next) => { try { res.json(await S.validate(Number(req.params.id), Number(req.params.collaboratorId), req.body, req.user.companyId, req.user, ip(req))) } catch (e) { next(e) } },
+  close: async (req, res, next) => { try { res.json(await S.close(Number(req.params.id), req.user.companyId, req.user, ip(req))) } catch (e) { next(e) } },
+  review: async (req, res, next) => { try { res.json(await S.review(Number(req.params.id), req.body, req.user.companyId, req.user, ip(req))) } catch (e) { next(e) } },
+}
