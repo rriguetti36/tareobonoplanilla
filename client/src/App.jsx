@@ -46,7 +46,7 @@ export default function App(){
         <Route path="/attendance" element={<ProtectedRoute><RoleRoute roles={['admin','rrhh','operaciones','supervisor','gerencia','colaborador']}><DashboardLayout><Attendance/></DashboardLayout></RoleRoute></ProtectedRoute>} />
         <Route path="/attendance-report" element={<ProtectedRoute><RoleRoute roles={['admin','rrhh','operaciones','gerencia']}><DashboardLayout><AttendanceReport/></DashboardLayout></RoleRoute></ProtectedRoute>} />
         <Route path="/my-contracts" element={<ProtectedRoute><RoleRoute roles={['colaborador']}><DashboardLayout><MyContracts/></DashboardLayout></RoleRoute></ProtectedRoute>} />
-        <Route path="/bonuses" element={<ProtectedRoute><RoleRoute roles={['admin','rrhh','operaciones','gerencia']}><DashboardLayout><Bonuses/></DashboardLayout></RoleRoute></ProtectedRoute>} />
+        <Route path="/bonuses" element={<ProtectedRoute><RoleRoute roles={['admin','rrhh','operaciones','gerencia','supervisor']}><DashboardLayout><Bonuses/></DashboardLayout></RoleRoute></ProtectedRoute>} />
         <Route path="/settings/bonuses" element={<ProtectedRoute><RoleRoute roles={['admin','rrhh']}><DashboardLayout><BonusSettings/></DashboardLayout></RoleRoute></ProtectedRoute>} />
       </Routes>
     </Box>

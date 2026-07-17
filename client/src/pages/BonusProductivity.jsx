@@ -37,10 +37,11 @@ const scoreAverage = (x) => {
   if (!values.length) return ''
   return (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1)
 }
+const clean = (value) => String(value ?? '').replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]))
 
 export default function BonusProductivity() {
   const user = JSON.parse(localStorage.getItem('user') || 'null')
-  const canManage = ['admin', 'rrhh', 'operaciones'].includes(user?.role)
+  const canManage = user?.role === 'supervisor'
   const toast = useToast()
   const [items, setItems] = useState([])
   const [clients, setClients] = useState([])
@@ -161,14 +162,73 @@ export default function BonusProductivity() {
     }))
   }
 
+  const exportExcel = async () => {
+    if (!items.length) {
+      toast({ title: 'No hay informacion para exportar', status: 'warning' })
+      return
+    }
+    setSaving(true)
+    try {
+      const details = await Promise.all(items.map((x) => api.get(`/bonuses/productivity/${x.id}`).then((r) => r.data)))
+      const columns = [
+        ['Fecha', (b) => date(b.workDate)],
+        ['Cliente', (b) => b.clientName],
+        ['Sede', (b) => b.siteName],
+        ['Area', (b) => b.areaName || 'Sin area'],
+        ['Turno', (b) => b.shiftName],
+        ['Mesa', (b) => b.workTableName],
+        ['Pallet', (b) => b.palletCode],
+        ['Lote', (b) => b.lotCode],
+        ['Cajas recibidas', (b) => b.boxesReceived],
+        ['Cajas procesadas', (b) => b.boxesProcessed],
+        ['Unidades etiquetadas', (b) => b.unitsTagged],
+        ['Unidades observadas', (b) => b.unitsRejected],
+        ['Inicio', (b) => time(b.startedAt)],
+        ['Fin', (b) => time(b.endedAt)],
+        ['Trabajador', (b, p) => p ? `${p.lastName}, ${p.firstName}` : ''],
+        ['DNI', (b, p) => p?.documentNumber],
+        ['Codigo', (b, p) => p?.employeeCode],
+        ['Productividad', (b, p) => p?.productivityScore],
+        ['Calidad', (b, p) => p?.qualityScore],
+        ['Equipo', (b, p) => p?.teamworkScore],
+        ['Disciplina', (b, p) => p?.disciplineScore],
+        ['Promedio', (b, p) => p ? scoreAverage(p) : ''],
+        ['Observacion evaluacion', (b, p) => p?.observation],
+        ['Observacion lote', (b) => b.notes],
+      ]
+      const head = columns.map(([label]) => `<th>${clean(label)}</th>`).join('')
+      const body = details.flatMap((d) => {
+        const people = d.people?.length ? d.people : [null]
+        return people.map((person) => `<tr>${columns.map(([, getter]) => `<td>${clean(getter(d.batch, person))}</td>`).join('')}</tr>`)
+      }).join('')
+      const html = `<!doctype html><html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></body></html>`
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `consulta-productividad-${filters.from || 'inicio'}-${filters.to || 'fin'}.xls`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      toast({ title: 'No se pudo exportar productividad', description: e.response?.data?.error, status: 'error' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <Box>
       <Flex direction={{ base: 'column', md: 'row' }} justify="space-between" gap={4} mb={5}>
         <Box>
-          <Heading size="md">Productividad por mesa</Heading>
-          <Text color="gray.500" mt={1}>Registra lotes/pallets, unidades etiquetadas y evaluacion individual.</Text>
+          <Heading size="md">{canManage ? 'Productividad por mesa' : 'Consulta general de productividad'}</Heading>
+          <Text color="gray.500" mt={1}>{canManage ? 'Registra lotes/pallets, unidades etiquetadas y evaluacion individual.' : 'Consulta y exporta la productividad registrada por los supervisores para evaluar bonos.'}</Text>
         </Box>
-        {canManage && <Button colorScheme="teal" onClick={() => setOpen(true)}>Nuevo registro</Button>}
+        <Flex gap={3} wrap="wrap">
+          {!canManage && <Button colorScheme="green" onClick={exportExcel} isLoading={saving} isDisabled={!items.length}>Exportar Excel</Button>}
+          {canManage && <Button colorScheme="teal" onClick={() => setOpen(true)}>Nuevo registro</Button>}
+        </Flex>
       </Flex>
 
       <Box bg="white" borderWidth="1px" borderRadius="xl" p={5} mb={5}>
@@ -195,7 +255,7 @@ export default function BonusProductivity() {
             <Td>{Number(x.unitsPerHour || 0).toFixed(2)} u/h</Td>
             <Td>{Number(x.unitsPerLaborHour || 0).toFixed(2)} u/hh</Td>
             <Td><Badge colorScheme={Number(x.qualityPercent) >= 95 ? 'green' : 'orange'}>{Number(x.qualityPercent || 0).toFixed(1)}%</Badge></Td>
-            <Td><Button size="sm" onClick={() => openDetail(x.id)}>Evaluar</Button></Td>
+            <Td><Button size="sm" onClick={() => openDetail(x.id)}>{canManage ? 'Evaluar' : 'Ver detalle'}</Button></Td>
           </Tr>)}</Tbody>
         </Table>}
       </Box>
@@ -230,7 +290,7 @@ export default function BonusProductivity() {
       <Modal isOpen={Boolean(detail)} onClose={() => setDetail(null)} size="6xl">
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Evaluacion individual</ModalHeader>
+          <ModalHeader>{canManage ? 'Evaluacion individual' : 'Detalle de productividad y evaluaciones'}</ModalHeader>
           <ModalCloseButton />
           <ModalBody>{detail && <>
             <Text mb={4}>{date(detail.batch.workDate)} · {detail.batch.workTableName} · {detail.batch.palletCode || 'Sin pallet'}</Text>
@@ -239,9 +299,9 @@ export default function BonusProductivity() {
                 <Thead bg="gray.50"><Tr><Th>Trabajador</Th><Th>Productividad</Th><Th>Calidad</Th><Th>Equipo</Th><Th>Disciplina</Th><Th>Prom.</Th><Th>Observacion</Th><Th /></Tr></Thead>
                 <Tbody>{detail.people.map((x) => <Tr key={x.collaboratorId}>
                   <Td>{x.lastName}, {x.firstName}<Text fontSize="xs" color="gray.500">{x.documentNumber}</Text></Td>
-                  {['productivityScore', 'qualityScore', 'teamworkScore', 'disciplineScore'].map((field) => <Td key={field}><Input w="90px" size="sm" type="number" min="0" max="100" value={x[field] ?? ''} onChange={(e) => updatePerson(x.collaboratorId, field, e.target.value)} /></Td>)}
+                  {['productivityScore', 'qualityScore', 'teamworkScore', 'disciplineScore'].map((field) => <Td key={field}><Input w="90px" size="sm" type="number" min="0" max="100" isReadOnly={!canManage} bg={canManage ? 'white' : 'gray.50'} value={x[field] ?? ''} onChange={(e) => updatePerson(x.collaboratorId, field, e.target.value)} /></Td>)}
                   <Td>{scoreAverage(x)}</Td>
-                  <Td><Input size="sm" value={x.observation || ''} onChange={(e) => updatePerson(x.collaboratorId, 'observation', e.target.value)} /></Td>
+                  <Td><Input size="sm" isReadOnly={!canManage} bg={canManage ? 'white' : 'gray.50'} value={x.observation || ''} onChange={(e) => updatePerson(x.collaboratorId, 'observation', e.target.value)} /></Td>
                   <Td>{canManage && <Button size="sm" onClick={() => saveEvaluation(x)} isLoading={saving}>Guardar</Button>}</Td>
                 </Tr>)}</Tbody>
               </Table>

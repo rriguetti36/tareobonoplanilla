@@ -69,7 +69,7 @@ export default function Sidebar({ user, onLogout, onNavigate }) {
         {canViewAttendance && role !== 'colaborador' && !canViewOperation && <Heading size="sm" pt={4}>Operacion</Heading>}
         {canViewAttendance && role !== 'colaborador' && <MenuLink to="/attendance">Tareo de asistencias</MenuLink>}
         {canViewAttendanceReport && <MenuLink to="/attendance-report">Consulta de tareos</MenuLink>}
-        {['admin', 'rrhh', 'operaciones', 'gerencia'].includes(role) && <MenuLink to="/bonuses">Bonos</MenuLink>}
+        {['admin', 'rrhh', 'operaciones', 'gerencia', 'supervisor'].includes(role) && <MenuLink to="/bonuses">Bonos</MenuLink>}
 
         {isAdmin && <>
           <Heading size="sm" pt={4}>Seguridad</Heading>
