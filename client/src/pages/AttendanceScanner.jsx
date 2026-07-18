@@ -32,6 +32,12 @@ const candidateCodes = (value) => {
   return [...new Set([normalized, ...windows.map(normalizeCode)])].filter((item) => item && (item.length >= 8 || /[A-Z]/.test(item)))
 }
 const digitCount = (value) => String(value || '').replace(/\D/g, '').length
+const asArray = (value) => Array.isArray(value) ? value : []
+const diagnosticText = (value) => {
+  if (!value) return ''
+  if (typeof value === 'string') return value
+  try { return JSON.stringify(value).slice(0, 500) } catch { return String(value) }
+}
 const safeTime = (value) => {
   if (!value) return 'Pendiente'
   const date = new Date(value)
@@ -51,6 +57,38 @@ const NotFoundStatus = ({ code, onNext }) => (
     </Flex>
   </Box>
 )
+
+class ScannerErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { error: null }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error }
+  }
+
+  componentDidCatch(error, info) {
+    console.error('AttendanceScanner render error', error, info)
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <Box bg="red.50" borderWidth="1px" borderColor="red.200" borderRadius="2xl" p={{ base: 4, md: 6 }}>
+          <Text color="red.700" fontSize="sm" fontWeight="800">Error en pantalla de escaneo</Text>
+          <Heading size="md" mt={1}>No se pudo mostrar la lectura</Heading>
+          <Text color="gray.700" mt={3}>La sesion sigue activa. Copia este mensaje para identificar la causa:</Text>
+          <Box as="pre" whiteSpace="pre-wrap" bg="white" borderRadius="xl" p={4} mt={4} fontSize="sm">
+            {this.state.error?.message || String(this.state.error)}
+          </Box>
+          <Button mt={4} colorScheme="red" variant="outline" onClick={() => this.setState({ error: null })}>Volver a intentar</Button>
+        </Box>
+      )
+    }
+    return this.props.children
+  }
+}
 
 const PersonStatus = ({ person, markingType }) => {
   if (!person) return null
@@ -93,11 +131,12 @@ export default function AttendanceScanner() {
   const [candidate, setCandidate] = useState(null)
   const [notFoundCode, setNotFoundCode] = useState('')
   const [message, setMessage] = useState('')
+  const [debugInfo, setDebugInfo] = useState(null)
   const [scanning, setScanning] = useState(false)
   const inputRef = useRef(null)
 
-  const activeSheets = useMemo(() => items.filter((x) => ['in_progress', 'reopened'].includes(x.status)), [items])
-  const people = selected?.people || []
+  const activeSheets = useMemo(() => asArray(items).filter((x) => ['in_progress', 'reopened'].includes(x.status)), [items])
+  const people = asArray(selected?.people)
   const detectedDuplicate = candidate && (markingType === 'entry' ? candidate.entryAt : markingType === 'exit' ? candidate.exitAt : false)
   const canConfirm = Boolean(selected?.sheet?.id && candidate && !detectedDuplicate && !saving)
 
@@ -105,6 +144,7 @@ export default function AttendanceScanner() {
     setCandidate(null)
     setNotFoundCode('')
     setMessage('')
+    setDebugInfo(null)
     setCode('')
     setScanning(false)
     setTimeout(() => inputRef.current?.focus(), 80)
@@ -114,8 +154,10 @@ export default function AttendanceScanner() {
     setLoading(true)
     try {
       const { data } = await api.get('/attendance')
-      setItems(data)
-      const firstOpen = data.find((x) => ['in_progress', 'reopened'].includes(x.status))
+      const list = asArray(data)
+      setItems(list)
+      if (!Array.isArray(data)) setDebugInfo({ etapa: 'cargar tareos', detalle: 'La API no devolvio una lista.', respuesta: diagnosticText(data) })
+      const firstOpen = list.find((x) => ['in_progress', 'reopened'].includes(x.status))
       if (firstOpen && !selectedId) {
         setSelectedId(String(firstOpen.id))
         await openSheet(firstOpen.id)
@@ -131,8 +173,11 @@ export default function AttendanceScanner() {
     if (!id) { setSelected(null); return }
     try {
       const { data } = await api.get(`/attendance/${id}`)
-      setSelected(data)
+      const invalidPeople = !Array.isArray(data?.people)
+      const safeData = { ...data, people: asArray(data?.people) }
+      setSelected(safeData)
       resetForNext()
+      if (invalidPeople) setDebugInfo({ etapa: 'abrir tareo', datoLeido: id, detalle: 'La API no devolvio el personal como lista.', respuesta: diagnosticText(data) })
     } catch (e) {
       toast({ title: 'No se pudo abrir el tareo', description: e.response?.data?.error || e.message, status: 'error' })
     }
@@ -145,6 +190,7 @@ export default function AttendanceScanner() {
       const clean = normalizeCode(value)
       if (!clean) return
       const possibleCodes = candidateCodes(value)
+      setDebugInfo({ etapa: 'lectura recibida', modo: detectedMode, datoLeido: String(value || ''), datoLimpio: clean, candidatos: possibleCodes })
       if (!possibleCodes.length && digitCount(value) > 0 && digitCount(value) < 8) {
         setCode(clean)
         setScanning(false)
@@ -167,6 +213,7 @@ export default function AttendanceScanner() {
       setCandidate(person || null)
       setNotFoundCode(person ? '' : (possibleCodes[0] || clean))
       if (!person) {
+        setDebugInfo({ etapa: 'trabajador no encontrado', modo: detectedMode, datoLeido: String(value || ''), datoLimpio: clean, candidatos: possibleCodes, personalEnTareo: people.length })
         setMessage('No se encontró este DNI/fotocheck dentro del tareo seleccionado.')
         toast({ title: 'Lectura no encontrada', description: 'Verifica que el trabajador pertenezca al tareo abierto.', status: 'warning' })
         return
@@ -175,6 +222,7 @@ export default function AttendanceScanner() {
     } catch (error) {
       setCandidate(null)
       setNotFoundCode(String(value || ''))
+      setDebugInfo({ etapa: 'interpretar lectura', datoLeido: String(value || ''), error: error.message })
       setMessage('No se pudo interpretar la lectura. Intenta nuevamente.')
       toast({ title: 'Lectura no interpretada', description: error.message, status: 'error' })
     }
@@ -191,12 +239,14 @@ export default function AttendanceScanner() {
     try {
       const deviceInfo = mode === 'mobile' ? `mobile-camera | ${navigator.userAgent}` : 'laser-scanner'
       const cleanCode = normalizeCode(candidate.documentNumber || code)
+      setDebugInfo({ etapa: 'confirmar marcacion', datoLeido: code, datoEnviado: cleanCode, markingType })
       await api.post(`/attendance/${selected.sheet.id}/scan-code`, { code: cleanCode, rawCode: code, markingType, deviceInfo })
       toast({ title: 'Marcación registrada', description: `${markNames[markingType]} de ${candidate.lastName}, ${candidate.firstName}`, status: 'success' })
       const sheetId = selected.sheet.id
       await openSheet(sheetId)
       resetForNext()
     } catch (e) {
+      setDebugInfo({ etapa: 'registrar marcacion', datoLeido: code, error: e.response?.data?.error || e.message, respuesta: diagnosticText(e.response?.data) })
       toast({ title: 'No se pudo registrar', description: e.response?.data?.error || e.message, status: 'error' })
     } finally {
       setSaving(false)
@@ -206,6 +256,7 @@ export default function AttendanceScanner() {
   if (loading) return <Flex justify="center" py={16}><Spinner /></Flex>
 
   return (
+    <ScannerErrorBoundary>
     <Box>
       <Flex direction={{ base: 'column', lg: 'row' }} justify="space-between" gap={5} mb={7}>
         <Box>
@@ -275,6 +326,15 @@ export default function AttendanceScanner() {
             </Box>}
 
             {message && <Alert status={candidate ? 'info' : 'warning'} borderRadius="xl" mt={5}><AlertIcon />{message}</Alert>}
+            {debugInfo && <Box bg="gray.50" borderWidth="1px" borderRadius="xl" p={4} mt={4}>
+              <Text fontWeight="800" color="gray.700">Diagnóstico de lectura</Text>
+              <Text fontSize="sm" color="gray.600" mt={1}>Dato leído: {debugInfo.datoLeido || '-'}</Text>
+              <Text fontSize="sm" color="gray.600">Dato limpio/enviado: {debugInfo.datoLimpio || debugInfo.datoEnviado || '-'}</Text>
+              <Text fontSize="sm" color="gray.600">Etapa: {debugInfo.etapa || '-'}</Text>
+              {debugInfo.error && <Text fontSize="sm" color="red.600">Error: {debugInfo.error}</Text>}
+              {debugInfo.detalle && <Text fontSize="sm" color="orange.700">Detalle: {debugInfo.detalle}</Text>}
+              {debugInfo.candidatos && <Text fontSize="xs" color="gray.500" mt={2}>Candidatos: {debugInfo.candidatos.join(', ') || '-'}</Text>}
+            </Box>}
           </Box>
 
           <PersonStatus person={candidate} markingType={markingType} />
@@ -304,5 +364,6 @@ export default function AttendanceScanner() {
         </Grid>
       </Grid>
     </Box>
+    </ScannerErrorBoundary>
   )
 }
