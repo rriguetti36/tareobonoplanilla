@@ -2,6 +2,15 @@ import React, { useEffect, useId, useRef, useState } from 'react'
 import { Alert, AlertIcon, Box, Spinner, Text } from '@chakra-ui/react'
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 
+const safeCall = async (work) => {
+  try {
+    const result = work?.()
+    if (result && typeof result.then === 'function') await result
+  } catch {
+    /* El lector puede estar detenido o limpiado por el navegador. */
+  }
+}
+
 export default function QrCameraScanner({ active, onScan }) {
   const id = `qr-reader-${useId().replace(/:/g, '')}`
   const [error, setError] = useState('')
@@ -17,7 +26,7 @@ export default function QrCameraScanner({ active, onScan }) {
     setStarting(true)
     setError('')
 
-    reader.start(
+    Promise.resolve(reader.start(
       { facingMode: 'environment' },
       {
         fps: 12,
@@ -39,18 +48,21 @@ export default function QrCameraScanner({ active, onScan }) {
       async (decodedText) => {
         if (delivered || !mounted) return
         delivered = true
-        try { await reader.stop() } catch { /* La cámara puede haberse detenido. */ }
+        await safeCall(() => reader.stop())
         if (mounted) onScanRef.current(decodedText)
       },
       () => {},
-    ).catch((cameraError) => {
+    )).catch((cameraError) => {
       if (mounted) setError(cameraError?.message || 'No se pudo acceder a la cámara.')
     }).finally(() => { if (mounted) setStarting(false) })
 
     return () => {
       mounted = false
-      if (reader.isScanning) reader.stop().catch(() => {}).finally(() => reader.clear().catch(() => {}))
-      else reader.clear().catch(() => {})
+      if (reader.isScanning) {
+        safeCall(() => reader.stop()).finally(() => safeCall(() => reader.clear()))
+      } else {
+        safeCall(() => reader.clear())
+      }
     }
   }, [active, id])
 
