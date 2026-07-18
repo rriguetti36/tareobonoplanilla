@@ -10,8 +10,9 @@ class AssignmentService {
   static getOperators(companyId) { return AssignmentModel.getPersonnel(companyId) }
   static getHistory(id, companyId) { return AssignmentModel.getHistory(id, companyId) }
   static getWorkTables(companyId) { return AssignmentModel.listWorkTables(companyId) }
-  static getWorkTableBoard(companyId, user) { return AssignmentModel.getWorkTableBoard(companyId, user) }
+  static getWorkTableBoard(companyId, user, filters = {}) { return AssignmentModel.getWorkTableBoard(companyId, user, filters) }
   static getWorkTableMovements(collaboratorId, companyId) { return AssignmentModel.getWorkTableMovements(companyId, collaboratorId) }
+  static getWorkTableDailyReport(companyId, user, filters = {}) { return AssignmentModel.getWorkTableDailyReport(companyId, user, filters) }
 
   static async createWorkTable(data, companyId) {
     if (!data.clientId || !data.siteId || !data.name) {
@@ -45,8 +46,10 @@ class AssignmentService {
 
   static async assignWorkTable(data, companyId, user) {
     const assignmentIds = [...new Set((data.assignmentIds || []).map(Number).filter(Boolean))]
-    if (!assignmentIds.length || !data.workTableId) {
-      const e = new Error('Selecciona personal y mesa de trabajo')
+    const workTableId = data.workTableId ? Number(data.workTableId) : null
+    const shiftId = data.shiftId ? Number(data.shiftId) : null
+    if (!assignmentIds.length || !data.workDate || !shiftId) {
+      const e = new Error('Selecciona personal, fecha y turno')
       e.status = 400
       throw e
     }
@@ -55,13 +58,13 @@ class AssignmentService {
       e.status = 400
       throw e
     }
-    const table = await AssignmentModel.getWorkTable(Number(data.workTableId), companyId)
-    if (!table) {
+    const table = workTableId ? await AssignmentModel.getWorkTable(workTableId, companyId) : null
+    if (workTableId && !table) {
       const e = new Error('Mesa de trabajo no encontrada')
       e.status = 404
       throw e
     }
-    const board = await AssignmentModel.getWorkTableBoard(companyId, user)
+    const board = await AssignmentModel.getWorkTableBoard(companyId, user, { workDate: data.workDate, shiftId })
     const allowed = new Set(board.map((x) => x.assignmentId))
     if (assignmentIds.some((id) => !allowed.has(id))) {
       const e = new Error('Solo puedes mover personal de tu sede y turno asignado')
@@ -69,12 +72,22 @@ class AssignmentService {
       throw e
     }
     const selected = board.filter((x) => assignmentIds.includes(x.assignmentId))
-    if (selected.some((x) => x.siteId !== table.siteId || (table.areaId && x.areaId !== table.areaId))) {
+    if (selected.some((x) => x.attendanceStatusCode === 'ABSENT')) {
+      const e = new Error('No se puede mover a mesa personal marcado como falta en el tareo del dia')
+      e.status = 400
+      throw e
+    }
+    if (selected.some((x) => x.shiftId !== shiftId)) {
+      const e = new Error('El personal seleccionado no pertenece al turno indicado')
+      e.status = 400
+      throw e
+    }
+    if (table && selected.some((x) => x.siteId !== table.siteId || (table.areaId && x.areaId !== table.areaId))) {
       const e = new Error('La mesa no pertenece a la sede/area del personal seleccionado')
       e.status = 400
       throw e
     }
-    return AssignmentModel.assignWorkTable({ assignmentIds, workTableId: Number(data.workTableId), reason: data.reason }, companyId, user.id)
+    return AssignmentModel.assignWorkTable({ assignmentIds, workTableId, workDate: data.workDate, shiftId, reason: data.reason }, companyId, user.id)
   }
 
   static async assignMany(data, companyId, userId) {

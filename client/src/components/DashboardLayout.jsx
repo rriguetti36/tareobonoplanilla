@@ -8,6 +8,7 @@ import Sidebar from './Sidebar'
 
 export default function DashboardLayout({ children }) {
   const [user, setUser] = useState(null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === '1')
   const navigate = useNavigate()
   const menu = useDisclosure()
 
@@ -16,6 +17,13 @@ export default function DashboardLayout({ children }) {
     if (userData) setUser(JSON.parse(userData))
     else navigate('/')
   }, [navigate])
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((current) => {
+      localStorage.setItem('sidebarCollapsed', current ? '0' : '1')
+      return !current
+    })
+  }
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -26,8 +34,8 @@ export default function DashboardLayout({ children }) {
   if (!user) return <Flex minH="100vh" align="center" justify="center" bg="gray.50"><Box textAlign="center"><Spinner mb={4} /><Text>Cargando...</Text></Box></Flex>
 
   return <Flex minH="100vh" bg="gray.50" align="stretch">
-    <Box display={{ base: 'none', lg: 'block' }} flex="0 0 250px">
-      <Sidebar user={user} onLogout={handleLogout} />
+    <Box display={{ base: 'none', lg: 'block' }} flex={sidebarCollapsed ? '0 0 76px' : '0 0 250px'} transition="flex-basis 180ms ease">
+      <Sidebar user={user} onLogout={handleLogout} collapsed={sidebarCollapsed} onToggleCollapse={toggleSidebar} />
     </Box>
 
     <Flex
@@ -47,7 +55,7 @@ export default function DashboardLayout({ children }) {
       <DrawerContent bg="gray.800" maxW={{ base: '85vw', md: '320px' }}>
         <DrawerCloseButton color="white" zIndex={2} />
         <DrawerBody p={0}>
-          <Sidebar user={user} onLogout={handleLogout} onNavigate={menu.onClose} />
+          <Sidebar user={user} onLogout={handleLogout} onNavigate={menu.onClose} isDrawer />
         </DrawerBody>
       </DrawerContent>
     </Drawer>

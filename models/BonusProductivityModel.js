@@ -25,11 +25,25 @@ class BonusProductivityModel {
         INNER JOIN dbo.WorkTables wt ON wt.id=b.workTableId
         INNER JOIN dbo.Users u ON u.id=b.createdBy
         OUTER APPLY (
-          SELECT COUNT(DISTINCT ca.collaboratorId) peopleCount
-          FROM dbo.CollaboratorAssignments ca
-          INNER JOIN dbo.Collaborators co ON co.id=ca.collaboratorId AND co.estado=1 AND co.laborStatus=N'active'
-          WHERE ca.companyId=b.companyId AND ca.workTableId=b.workTableId AND ca.estado=1
-            AND ca.startDate<=b.workDate AND (ca.endDate IS NULL OR ca.endDate>=b.workDate)
+          SELECT
+            CASE
+              WHEN dailyCount.peopleCount > 0 THEN dailyCount.peopleCount
+              ELSE legacyCount.peopleCount
+            END peopleCount
+          FROM (
+            SELECT COUNT(DISTINCT d.collaboratorId) peopleCount
+            FROM dbo.WorkTableDailyAssignments d
+            INNER JOIN dbo.Collaborators co ON co.id=d.collaboratorId AND co.estado=1 AND co.laborStatus=N'active'
+            WHERE d.companyId=b.companyId AND d.workDate=b.workDate AND d.shiftId=b.shiftId AND d.workTableId=b.workTableId AND d.estado=1
+          ) dailyCount
+          CROSS JOIN (
+            SELECT COUNT(DISTINCT ca.collaboratorId) peopleCount
+            FROM dbo.CollaboratorAssignments ca
+            INNER JOIN dbo.Collaborators co ON co.id=ca.collaboratorId AND co.estado=1 AND co.laborStatus=N'active'
+            WHERE ca.companyId=b.companyId AND ca.workTableId=b.workTableId AND ca.estado=1
+              AND ca.startDate<=b.workDate AND (ca.endDate IS NULL OR ca.endDate>=b.workDate)
+              AND NOT EXISTS(SELECT 1 FROM dbo.WorkTableDailyAssignments dx WHERE dx.companyId=b.companyId AND dx.workDate=b.workDate AND dx.shiftId=b.shiftId AND dx.estado=1)
+          ) legacyCount
         ) people
         WHERE b.companyId=@companyId
           AND (@from IS NULL OR b.workDate>=@from)
@@ -84,12 +98,18 @@ class BonusProductivityModel {
       SELECT co.id collaboratorId,co.employeeCode,co.documentNumber,co.firstName,co.lastName,p.name positionName,
         ev.productivityScore,ev.qualityScore,ev.teamworkScore,ev.disciplineScore,ev.observation,ev.updatedAt
       FROM dbo.BonusProductivityBatches b
-      INNER JOIN dbo.CollaboratorAssignments ca ON ca.companyId=b.companyId AND ca.workTableId=b.workTableId
+      INNER JOIN dbo.CollaboratorAssignments ca ON ca.companyId=b.companyId AND ca.siteId=b.siteId AND ca.shiftId=b.shiftId
         AND ca.estado=1 AND ca.startDate<=b.workDate AND (ca.endDate IS NULL OR ca.endDate>=b.workDate)
+      LEFT JOIN dbo.WorkTableDailyAssignments d ON d.companyId=b.companyId AND d.workDate=b.workDate AND d.shiftId=b.shiftId
+        AND d.assignmentId=ca.id AND d.collaboratorId=ca.collaboratorId AND d.estado=1
       INNER JOIN dbo.Collaborators co ON co.id=ca.collaboratorId AND co.estado=1 AND co.laborStatus=N'active'
       INNER JOIN dbo.Positions p ON p.id=co.positionId AND p.code=N'operario'
       LEFT JOIN dbo.BonusProductivityEvaluations ev ON ev.batchId=b.id AND ev.collaboratorId=co.id
       WHERE b.id=@id AND b.companyId=@companyId
+        AND (
+          (EXISTS(SELECT 1 FROM dbo.WorkTableDailyAssignments dx WHERE dx.companyId=b.companyId AND dx.workDate=b.workDate AND dx.shiftId=b.shiftId AND dx.estado=1) AND d.workTableId=b.workTableId)
+          OR (NOT EXISTS(SELECT 1 FROM dbo.WorkTableDailyAssignments dx WHERE dx.companyId=b.companyId AND dx.workDate=b.workDate AND dx.shiftId=b.shiftId AND dx.estado=1) AND ca.workTableId=b.workTableId)
+        )
       ORDER BY co.lastName,co.firstName;
     `)
     return { batch: r.recordsets[0][0], people: r.recordsets[1] }

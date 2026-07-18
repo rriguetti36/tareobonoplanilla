@@ -15,6 +15,7 @@ import WorkTables from './pages/WorkTables'
 import Holidays from './pages/Holidays'
 import PersonnelProcesses from './pages/PersonnelProcesses'
 import Attendance from './pages/Attendance'
+import AttendanceScanner from './pages/AttendanceScanner'
 import AttendanceReport from './pages/AttendanceReport'
 import MyContracts from './pages/MyContracts'
 import Bonuses from './pages/Bonuses'
@@ -44,6 +45,7 @@ export default function App(){
         <Route path="/holidays" element={<ProtectedRoute><RoleRoute roles={['admin','rrhh','contabilidad','gerencia']}><DashboardLayout><Holidays/></DashboardLayout></RoleRoute></ProtectedRoute>} />
         <Route path="/personnel/:type" element={<ProtectedRoute><RoleRoute roles={['admin','rrhh','operaciones','gerencia','contabilidad']}><DashboardLayout><PersonnelProcesses/></DashboardLayout></RoleRoute></ProtectedRoute>} />
         <Route path="/attendance" element={<ProtectedRoute><RoleRoute roles={['admin','rrhh','operaciones','supervisor','gerencia','colaborador']}><DashboardLayout><Attendance/></DashboardLayout></RoleRoute></ProtectedRoute>} />
+        <Route path="/attendance-scanner" element={<ProtectedRoute><RoleRoute roles={['admin','supervisor']}><DashboardLayout><AttendanceScanner/></DashboardLayout></RoleRoute></ProtectedRoute>} />
         <Route path="/attendance-report" element={<ProtectedRoute><RoleRoute roles={['admin','rrhh','operaciones','gerencia']}><DashboardLayout><AttendanceReport/></DashboardLayout></RoleRoute></ProtectedRoute>} />
         <Route path="/my-contracts" element={<ProtectedRoute><RoleRoute roles={['colaborador']}><DashboardLayout><MyContracts/></DashboardLayout></RoleRoute></ProtectedRoute>} />
         <Route path="/bonuses" element={<ProtectedRoute><RoleRoute roles={['admin','rrhh','operaciones','gerencia','supervisor']}><DashboardLayout><Bonuses/></DashboardLayout></RoleRoute></ProtectedRoute>} />

@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from 'react'
 import { Alert, AlertIcon, Box, Spinner, Text } from '@chakra-ui/react'
-import { Html5Qrcode } from 'html5-qrcode'
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 
 export default function QrCameraScanner({ active, onScan }) {
   const id = `qr-reader-${useId().replace(/:/g, '')}`
@@ -19,7 +19,7 @@ export default function QrCameraScanner({ active, onScan }) {
 
     reader.start(
       { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 240, height: 240 }, aspectRatio: 1 },
+      { fps: 10, qrbox: { width: 240, height: 240 }, aspectRatio: 1, formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.PDF_417, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.ITF] },
       async (decodedText) => {
         if (delivered || !mounted) return
         delivered = true

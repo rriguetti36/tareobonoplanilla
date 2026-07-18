@@ -15,6 +15,7 @@ router.put('/shifts/:id', allow('admin', 'rrhh', 'operaciones'), C.updateShift);
 
 router.get('/work-tables', view, C.getWorkTables);
 router.get('/work-tables/board', manage, C.getWorkTableBoard);
+router.get('/work-tables/history', view, C.getWorkTableDailyReport);
 router.post('/work-tables/assign', manage, C.assignWorkTable);
 router.get('/work-tables/movements/:collaboratorId', view, C.getWorkTableMovements);
 router.post('/work-tables', manage, C.createWorkTable);

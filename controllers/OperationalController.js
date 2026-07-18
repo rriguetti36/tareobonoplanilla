@@ -15,10 +15,13 @@ module.exports = {
     try { res.json(await AssignmentService.getWorkTables(req.user.companyId)); } catch (e) { next(e); }
   },
   getWorkTableBoard: async (req, res, next) => {
-    try { res.json(await AssignmentService.getWorkTableBoard(req.user.companyId, req.user)); } catch (e) { next(e); }
+    try { res.json(await AssignmentService.getWorkTableBoard(req.user.companyId, req.user, req.query)); } catch (e) { next(e); }
   },
   assignWorkTable: async (req, res, next) => {
     try { res.json(await AssignmentService.assignWorkTable(req.body, req.user.companyId, req.user)); } catch (e) { next(e); }
+  },
+  getWorkTableDailyReport: async (req, res, next) => {
+    try { res.json(await AssignmentService.getWorkTableDailyReport(req.user.companyId, req.user, req.query)); } catch (e) { next(e); }
   },
   getWorkTableMovements: async (req, res, next) => {
     try { res.json(await AssignmentService.getWorkTableMovements(Number(req.params.collaboratorId), req.user.companyId)); } catch (e) { next(e); }
