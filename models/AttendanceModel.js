@@ -259,16 +259,27 @@ class AttendanceModel {
 
   static async collaboratorByCode(code, companyId) {
     const pool = await poolPromise
-    const value = String(code || '').trim()
-    const r = await pool.request().input('code', sql.NVarChar(60), value).input('companyId', sql.Int, companyId).query(`
+    const raw = String(code || '').trim()
+    const compact = raw.replace(/\s+/g, '').toUpperCase()
+    const digitRuns = raw.match(/\d{8,}/g) || []
+    const windows = []
+    digitRuns.forEach((run) => {
+      windows.push(run.trim(), run.trim().slice(0, 8))
+      for (let index = 0; index <= run.length - 8; index += 1) windows.push(run.slice(index, index + 8))
+    })
+    const candidates = [...new Set([compact, ...windows].filter(Boolean))]
+    if (!candidates.length) return null
+    const request = pool.request().input('companyId', sql.Int, companyId)
+    candidates.forEach((value, index) => request.input(`code${index}`, sql.NVarChar(80), value))
+    const clauses = candidates.map((_, index) => `documentNumber=@code${index} OR employeeCode=@code${index} OR @code${index} LIKE '%' + documentNumber + '%' OR @code${index} LIKE '%' + employeeCode + '%'`)
+    const r = await request.query(`
       SELECT TOP 1 * FROM dbo.Collaborators
       WHERE companyId=@companyId AND estado=1 AND laborStatus=N'active'
-        AND (documentNumber=@code OR employeeCode=@code)
+        AND (${clauses.join(' OR ')})
       ORDER BY id
     `)
     return r.recordset[0]
   }
-
   static async isExpected(sheetId, collaboratorId) {
     return Boolean(await this.expectedRecord(sheetId, collaboratorId))
   }
