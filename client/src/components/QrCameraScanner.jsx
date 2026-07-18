@@ -19,7 +19,23 @@ export default function QrCameraScanner({ active, onScan }) {
 
     reader.start(
       { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 240, height: 240 }, aspectRatio: 1, formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.PDF_417, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.ITF] },
+      {
+        fps: 12,
+        qrbox: (viewfinderWidth, viewfinderHeight) => ({
+          width: Math.floor(Math.min(viewfinderWidth * 0.92, 520)),
+          height: Math.floor(Math.min(viewfinderHeight * 0.38, 180)),
+        }),
+        aspectRatio: 1.777778,
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.QR_CODE,
+          Html5QrcodeSupportedFormats.PDF_417,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.ITF,
+        ],
+      },
       async (decodedText) => {
         if (delivered || !mounted) return
         delivered = true

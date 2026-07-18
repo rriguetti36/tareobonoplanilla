@@ -261,17 +261,18 @@ class AttendanceModel {
     const pool = await poolPromise
     const raw = String(code || '').trim()
     const compact = raw.replace(/\s+/g, '').toUpperCase()
-    const digitRuns = raw.match(/\d{8,}/g) || []
+    const digitsOnly = raw.replace(/\D/g, '')
+    const digitRuns = [...(raw.match(/\d{8,}/g) || []), digitsOnly].filter((x) => x.length >= 8)
     const windows = []
     digitRuns.forEach((run) => {
       windows.push(run.trim(), run.trim().slice(0, 8))
       for (let index = 0; index <= run.length - 8; index += 1) windows.push(run.slice(index, index + 8))
     })
-    const candidates = [...new Set([compact, ...windows].filter(Boolean))]
+    const candidates = [...new Set([compact, ...windows].filter((item) => item && (item.length >= 8 || /[A-Z]/.test(item))))]
     if (!candidates.length) return null
     const request = pool.request().input('companyId', sql.Int, companyId)
     candidates.forEach((value, index) => request.input(`code${index}`, sql.NVarChar(80), value))
-    const clauses = candidates.map((_, index) => `documentNumber=@code${index} OR employeeCode=@code${index} OR @code${index} LIKE '%' + documentNumber + '%' OR @code${index} LIKE '%' + employeeCode + '%'`)
+    const clauses = candidates.map((_, index) => `documentNumber=@code${index} OR employeeCode=@code${index} OR (LEN(documentNumber) >= 4 AND @code${index} LIKE '%' + documentNumber + '%') OR (LEN(employeeCode) >= 4 AND @code${index} LIKE '%' + employeeCode + '%')`)
     const r = await request.query(`
       SELECT TOP 1 * FROM dbo.Collaborators
       WHERE companyId=@companyId AND estado=1 AND laborStatus=N'active'

@@ -22,14 +22,16 @@ const normalizeCode = (value) => String(value || '').trim().replace(/\s+/g, '').
 const candidateCodes = (value) => {
   const raw = String(value || '').trim()
   const normalized = normalizeCode(raw)
-  const digitRuns = raw.match(/\d{8,}/g) || []
+  const digitsOnly = raw.replace(/\D/g, '')
+  const digitRuns = [...(raw.match(/\d{8,}/g) || []), digitsOnly].filter((x) => x.length >= 8)
   const windows = []
   digitRuns.forEach((run) => {
     windows.push(run, run.slice(0, 8))
     for (let index = 0; index <= run.length - 8; index += 1) windows.push(run.slice(index, index + 8))
   })
-  return [...new Set([normalized, ...windows.map(normalizeCode)]).filter(Boolean)]
+  return [...new Set([normalized, ...windows.map(normalizeCode)]).filter((item) => item && (item.length >= 8 || /[A-Z]/.test(item)))]
 }
+const digitCount = (value) => String(value || '').replace(/\D/g, '').length
 const safeTime = (value) => {
   if (!value) return 'Pendiente'
   const date = new Date(value)
@@ -143,18 +145,27 @@ export default function AttendanceScanner() {
       const clean = normalizeCode(value)
       if (!clean) return
       const possibleCodes = candidateCodes(value)
+      if (!possibleCodes.length && digitCount(value) > 0 && digitCount(value) < 8) {
+        setCode(clean)
+        setScanning(false)
+        setCandidate(null)
+        setNotFoundCode(clean)
+        setMessage('Lectura incompleta: la cámara solo leyó parte del DNI. Acerca el código y encuádralo completo.')
+        return
+      }
       let matchedCode = possibleCodes[0] || clean
       const person = people.find((p) => {
         const documentNumber = normalizeCode(p.documentNumber)
         const employeeCode = normalizeCode(p.employeeCode)
-        const matched = possibleCodes.find((item) => item === documentNumber || item === employeeCode || item.includes(documentNumber) || item.includes(employeeCode))
+        const validTargets = [documentNumber, employeeCode].filter((item) => item && item.length >= 4)
+        const matched = possibleCodes.find((item) => validTargets.some((target) => item === target || item.includes(target) || target.includes(item)))
         if (matched) matchedCode = documentNumber || employeeCode || matched
         return Boolean(matched)
       })
       setCode(matchedCode)
       setScanning(false)
       setCandidate(person || null)
-      setNotFoundCode(person ? '' : clean)
+      setNotFoundCode(person ? '' : (possibleCodes[0] || clean))
       if (!person) {
         setMessage('No se encontró este DNI/fotocheck dentro del tareo seleccionado.')
         toast({ title: 'Lectura no encontrada', description: 'Verifica que el trabajador pertenezca al tareo abierto.', status: 'warning' })
