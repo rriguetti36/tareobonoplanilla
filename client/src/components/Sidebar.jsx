@@ -135,9 +135,19 @@ export default function Sidebar({ user, onLogout, onNavigate, collapsed = false,
         </VStack>
       </Box>
 
-      <Box px={collapsed ? 2 : 4} py={4} flexShrink={0}>
-        <Divider mb={4} borderColor="gray.700" />
-        <Button colorScheme="red" size="sm" w="100%" px={collapsed ? 0 : 4} onClick={() => { onLogout(); navigate('/') }}>
+      <Box
+        px={collapsed ? 2 : 4}
+        pt={3}
+        pb={isDrawer ? 'calc(18px + env(safe-area-inset-bottom))' : 4}
+        flexShrink={0}
+        bg="gray.800"
+        borderTopWidth="1px"
+        borderColor="gray.700"
+        position={isDrawer ? 'sticky' : 'relative'}
+        bottom={0}
+        zIndex={1}
+      >
+        <Button colorScheme="red" size={isDrawer ? 'md' : 'sm'} h={isDrawer ? '46px' : undefined} w="100%" px={collapsed ? 0 : 4} onClick={() => { onLogout(); navigate('/') }}>
           {collapsed ? 'Salir' : 'Cerrar sesion'}
         </Button>
       </Box>
