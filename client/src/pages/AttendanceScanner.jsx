@@ -29,7 +29,7 @@ const candidateCodes = (value) => {
     windows.push(run, run.slice(0, 8))
     for (let index = 0; index <= run.length - 8; index += 1) windows.push(run.slice(index, index + 8))
   })
-  return [...new Set([normalized, ...windows.map(normalizeCode)]).filter((item) => item && (item.length >= 8 || /[A-Z]/.test(item)))]
+  return [...new Set([normalized, ...windows.map(normalizeCode)])].filter((item) => item && (item.length >= 8 || /[A-Z]/.test(item)))
 }
 const digitCount = (value) => String(value || '').replace(/\D/g, '').length
 const safeTime = (value) => {
